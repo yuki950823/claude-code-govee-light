@@ -1,0 +1,329 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>Govee Control · H8022</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400&display=swap" rel="stylesheet">
+<style>
+:root{
+  --ink:#171717; --body:#4d4d4d; --mute:#888888; --hair:#ebebeb; --hair-strong:#a1a1a1;
+  --canvas:#ffffff; --soft:#fafafa; --soft2:#f5f5f5; --link:#0070f3; --err:#ee0000;
+  --sans:'Inter',system-ui,-apple-system,sans-serif;
+  --mono:'JetBrains Mono',ui-monospace,SFMono-Regular,Menlo,monospace;
+  --shadow:0 1px 1px #00000005,0 2px 2px #0000000a, 0 0 0 1px #00000014 inset;
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--soft);color:var(--ink);font-family:var(--sans);-webkit-font-smoothing:antialiased}
+.wrap{max-width:760px;margin:0 auto;padding:56px 24px 96px}
+.eyebrow{font-family:var(--mono);font-size:12px;color:var(--mute);text-transform:uppercase;margin:0 0 10px}
+h1{font-size:32px;line-height:40px;font-weight:600;letter-spacing:-1.28px;margin:0 0 6px}
+.sub{color:var(--body);font-size:16px;line-height:24px;margin:0 0 32px;max-width:48ch}
+.card{background:var(--canvas);border-radius:12px;box-shadow:var(--shadow);padding:28px;margin-bottom:20px}
+.tabs{display:inline-flex;gap:6px;background:var(--soft2);padding:4px;border-radius:100px;margin-bottom:24px}
+.tab{border:0;background:transparent;font-family:var(--sans);font-size:14px;font-weight:500;color:var(--body);padding:7px 18px;border-radius:100px;cursor:pointer}
+.tab.active{background:var(--canvas);color:var(--ink);box-shadow:0 1px 2px #00000010}
+.swatches{display:flex;gap:8px;margin-bottom:20px}
+.sw{flex:1;border:1px solid var(--hair);border-radius:8px;padding:10px 12px;cursor:pointer;display:flex;align-items:center;gap:10px;background:var(--canvas);transition:border-color .12s,box-shadow .12s}
+.sw.active{border-color:var(--ink);box-shadow:0 0 0 1px var(--ink)}
+.dot{width:22px;height:22px;border-radius:6px;border:1px solid #0000001a;flex:none}
+.sw .lab{font-family:var(--mono);font-size:12px;color:var(--body)}
+.row{display:flex;gap:24px;flex-wrap:wrap;align-items:center}
+.wheelcol{display:flex;gap:14px;align-items:center}
+canvas#wheel{touch-action:none;cursor:crosshair;border-radius:50%;box-shadow:0 0 0 1px var(--hair)}
+input[type=range]{accent-color:var(--ink);cursor:pointer}
+.vslider{width:22px;height:240px;writing-mode:vertical-lr;direction:rtl}
+.field{display:flex;flex-direction:column;gap:6px}
+label.cap{font-family:var(--mono);font-size:12px;color:var(--mute);text-transform:uppercase}
+input[type=text]{font-family:var(--mono);font-size:14px;border:1px solid var(--hair);border-radius:6px;height:40px;padding:0 12px;width:130px;color:var(--ink);outline:none}
+input[type=text]:focus{border-color:var(--hair-strong)}
+.rgbread{font-family:var(--mono);font-size:12px;color:var(--mute)}
+.preview{height:60px;border-radius:8px;border:1px solid var(--hair);margin-top:12px}
+.btnrow{display:flex;gap:12px;flex-wrap:wrap;align-items:center}
+button.pill{font-family:var(--sans);font-weight:500;font-size:14px;border-radius:100px;height:40px;padding:0 20px;cursor:pointer;border:1px solid var(--hair)}
+button.primary{background:var(--ink);color:#fff;border-color:var(--ink)}
+button.secondary{background:var(--canvas);color:var(--ink)}
+button.pill:active{transform:translateY(1px)}
+select{font-family:var(--sans);font-size:14px;height:40px;border:1px solid var(--hair);border-radius:6px;padding:0 10px;background:var(--canvas);color:var(--ink);cursor:pointer}
+.status{font-family:var(--mono);font-size:12px;color:var(--mute);margin-top:18px}
+.statedot{display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--link);margin-right:7px;vertical-align:middle}
+hr{border:0;border-top:1px solid var(--hair);margin:22px 0}
+small.hint{display:block;color:var(--mute);font-size:12px;margin-top:10px}
+.statelist{display:flex;flex-direction:column;gap:8px}
+.staterow{display:flex;align-items:center;gap:14px;border:1px solid var(--hair);border-radius:8px;padding:10px 12px}
+.stateswatch{width:72px;height:30px;border-radius:6px;border:1px solid #0000001a;flex:none}
+.statemeta{display:flex;flex-direction:column;gap:2px;min-width:0;flex:1}
+.statename{font-size:14px;font-weight:500}
+.statehex{font-family:var(--mono);font-size:12px;color:var(--mute);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.statetag{font-family:var(--mono);font-size:11px;padding:2px 9px;border-radius:100px;flex:none}
+.tag-saved{background:#eaf3ff;color:var(--link-deep,#0761d1)}
+.tag-default{background:var(--soft2);color:var(--mute)}
+.stateedit{font-family:var(--sans);font-size:13px;font-weight:500;color:var(--ink);background:var(--canvas);border:1px solid var(--hair);border-radius:100px;height:30px;padding:0 14px;cursor:pointer;flex:none}
+.stateedit:active{transform:translateY(1px)}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <p class="eyebrow">Govee · H8022 · LAN</p>
+  <h1>Light control.</h1>
+  <p class="sub">Dial in a solid colour or a two-stop gradient, preview it live on the lamp, then save it to a Claude Code state.</p>
+
+  <div class="card">
+    <div class="tabs" id="tabs">
+      <button class="tab active" data-mode="solid">Solid</button>
+      <button class="tab" data-mode="gradient">Gradient</button>
+    </div>
+
+    <div class="swatches" id="swatches"></div>
+
+    <div class="row">
+      <div class="wheelcol">
+        <canvas id="wheel" width="240" height="240"></canvas>
+        <input id="val" class="vslider" type="range" min="0" max="100" value="100" title="Brightness / value"/>
+      </div>
+      <div class="field">
+        <label class="cap" for="hex">Hex</label>
+        <input id="hex" type="text" maxlength="7" value="#FFFFFF"/>
+        <div class="rgbread" id="rgb">rgb(255, 255, 255)</div>
+      </div>
+    </div>
+
+    <div id="gradientPanel" style="display:none">
+      <hr/>
+      <div class="field" style="max-width:360px">
+        <label class="cap" for="speed">Speed · <span id="speedval">0.12</span></label>
+        <input id="speed" type="range" min="2" max="50" value="12"/>
+      </div>
+      <div class="preview" id="preview"></div>
+      <small class="hint">Preview mirrors the lamp's easing between the two stops.</small>
+    </div>
+  </div>
+
+  <div class="card">
+    <p class="eyebrow">Save to state</p>
+    <div class="btnrow">
+      <select id="stateSel">
+        <option value="permission">permission — needs approval</option>
+        <option value="warning">warning</option>
+        <option value="thinking">thinking — working</option>
+        <option value="waiting">waiting — idle</option>
+        <option value="done">done — finished</option>
+        <option value="start">start — new session</option>
+      </select>
+      <button class="pill primary" id="saveBtn">Save state</button>
+      <span class="rgbread" id="saveMsg"></span>
+    </div>
+    <small class="hint">Saved states drive the Claude Code hooks via <code>govee-states.json</code>.</small>
+  </div>
+
+  <div class="card">
+    <p class="eyebrow">Current settings · per state</p>
+    <div class="statelist" id="stateList"></div>
+    <small class="hint"><b>saved</b> = customised here (govee-states.json). <b>default</b> = built-in effect. Hit <b>Edit</b> to load one into the editor above.</small>
+  </div>
+
+  <div class="card">
+    <p class="eyebrow">Light</p>
+    <div class="btnrow">
+      <button class="pill secondary" id="onBtn">Turn on</button>
+      <button class="pill secondary" id="offBtn">Turn off</button>
+      <button class="pill secondary" id="stopBtn">Stop animation</button>
+    </div>
+    <div class="status"><span class="statedot" id="statedot"></span><span id="statusText">connecting…</span></div>
+  </div>
+</div>
+
+<script>
+const $ = s => document.querySelector(s);
+const wheel = $('#wheel'), wctx = wheel.getContext('2d');
+const R = 120, CR = 110;
+
+function hsvToRgb(h,s,v){
+  h=((h%360)+360)%360; const c=v*s, x=c*(1-Math.abs((h/60)%2-1)), m=v-c; let r,g,b;
+  if(h<60){r=c;g=x;b=0}else if(h<120){r=x;g=c;b=0}else if(h<180){r=0;g=c;b=x}
+  else if(h<240){r=0;g=x;b=c}else if(h<300){r=x;g=0;b=c}else{r=c;g=0;b=x}
+  return [Math.round((r+m)*255),Math.round((g+m)*255),Math.round((b+m)*255)];
+}
+function rgbToHsv(r,g,b){
+  r/=255;g/=255;b/=255; const mx=Math.max(r,g,b),mn=Math.min(r,g,b),d=mx-mn; let h=0;
+  if(d){ if(mx===r)h=((g-b)/d)%6; else if(mx===g)h=(b-r)/d+2; else h=(r-g)/d+4; h*=60; if(h<0)h+=360; }
+  return [h, mx?d/mx:0, mx];
+}
+const toHex=(r,g,b)=>'#'+[r,g,b].map(x=>Math.max(0,Math.min(255,x)).toString(16).padStart(2,'0')).join('').toUpperCase();
+function hexToRgb(h){ h=h.replace('#','').trim(); if(h.length===3)h=h.split('').map(c=>c+c).join(''); return [parseInt(h.slice(0,2),16),parseInt(h.slice(2,4),16),parseInt(h.slice(4,6),16)]; }
+
+const A=rgbToHsv(255,162,154), B=rgbToHsv(255,205,169);
+const state={ mode:'solid', active:'color',
+  sw:{ color:{h:0,s:0,v:1}, a:{h:A[0],s:A[1],v:A[2]}, b:{h:B[0],s:B[1],v:B[2]} }, speed:0.12 };
+
+function drawWheel(v){
+  const img=wctx.createImageData(240,240), d=img.data;
+  for(let y=0;y<240;y++)for(let x=0;x<240;x++){
+    const dx=x-R,dy=y-R,dist=Math.sqrt(dx*dx+dy*dy),i=(y*240+x)*4;
+    if(dist<=CR){ let h=Math.atan2(dy,dx)*180/Math.PI; if(h<0)h+=360;
+      const[r,g,b]=hsvToRgb(h,dist/CR,v); d[i]=r;d[i+1]=g;d[i+2]=b;d[i+3]=255; } else d[i+3]=0;
+  }
+  wctx.putImageData(img,0,0);
+  const c=state.sw[state.active], ang=c.h*Math.PI/180, rr=c.s*CR;
+  const kx=R+Math.cos(ang)*rr, ky=R+Math.sin(ang)*rr;
+  wctx.beginPath();wctx.arc(kx,ky,7,0,Math.PI*2);wctx.strokeStyle='#fff';wctx.lineWidth=2;wctx.stroke();
+  wctx.beginPath();wctx.arc(kx,ky,8.5,0,Math.PI*2);wctx.strokeStyle='#00000055';wctx.lineWidth=1;wctx.stroke();
+}
+const curRgb=k=>{const c=state.sw[k||state.active];return hsvToRgb(c.h,c.s,c.v);};
+const curHex=k=>{const[r,g,b]=curRgb(k);return toHex(r,g,b);};
+
+function renderSwatches(){
+  const el=$('#swatches'); el.innerHTML='';
+  const keys=state.mode==='solid'?[['color','Colour']]:[['a','Stop A'],['b','Stop B']];
+  keys.forEach(([k,label])=>{
+    const hex=curHex(k), div=document.createElement('div');
+    div.className='sw'+(state.active===k?' active':'');
+    div.innerHTML=`<span class="dot" style="background:${hex}"></span><span class="lab">${label} · ${hex}</span>`;
+    div.onclick=()=>{state.active=k;refresh();};
+    el.appendChild(div);
+  });
+}
+function refresh(){
+  const c=state.sw[state.active]; drawWheel(c.v);
+  $('#val').value=Math.round(c.v*100);
+  const[r,g,b]=curRgb(); $('#hex').value=toHex(r,g,b); $('#rgb').textContent=`rgb(${r}, ${g}, ${b})`;
+  renderSwatches();
+}
+
+let pushTimer=null;
+function pushLive(){
+  clearTimeout(pushTimer);
+  pushTimer=setTimeout(()=>{
+    if(state.mode==='solid'){ const[r,g,b]=curRgb('color'); api('/api/color',{r,g,b}); }
+    else api('/api/gradient',{a:curHex('a').slice(1),b:curHex('b').slice(1),speed:state.speed});
+  },60);
+}
+async function api(path,body){
+  try{ await fetch(path,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)}); setStatus(true,'live'); }
+  catch(e){ setStatus(false,'server offline'); }
+}
+function setStatus(ok,msg){ $('#statedot').style.background=ok?'var(--link)':'var(--err)'; $('#statusText').textContent=msg; }
+
+function pick(e){
+  const rect=wheel.getBoundingClientRect();
+  const x=(e.clientX-rect.left)*(240/rect.width), y=(e.clientY-rect.top)*(240/rect.height);
+  const dx=x-R,dy=y-R; let h=Math.atan2(dy,dx)*180/Math.PI; if(h<0)h+=360;
+  const c=state.sw[state.active]; c.h=h; c.s=Math.min(1,Math.sqrt(dx*dx+dy*dy)/CR);
+  refresh(); pushLive();
+}
+let dragging=false;
+wheel.addEventListener('pointerdown',e=>{dragging=true;wheel.setPointerCapture(e.pointerId);pick(e);});
+wheel.addEventListener('pointermove',e=>{if(dragging)pick(e);});
+wheel.addEventListener('pointerup',()=>dragging=false);
+$('#val').addEventListener('input',e=>{state.sw[state.active].v=e.target.value/100;refresh();pushLive();});
+$('#hex').addEventListener('change',e=>{
+  const v=e.target.value.replace('#','');
+  if(!/^[0-9a-fA-F]{6}$/.test(v))return;
+  const[r,g,b]=hexToRgb(v),[h,s,vv]=rgbToHsv(r,g,b);
+  const c=state.sw[state.active]; c.h=h;c.s=s;c.v=vv; refresh(); pushLive();
+});
+$('#speed').addEventListener('input',e=>{state.speed=+(e.target.value/100).toFixed(2);$('#speedval').textContent=state.speed;pushLive();});
+
+function setTab(mode){
+  document.querySelectorAll('.tab').forEach(x=>x.classList.toggle('active', x.dataset.mode===mode));
+  state.mode=mode;
+  $('#gradientPanel').style.display = mode==='gradient'?'block':'none';
+}
+$('#tabs').addEventListener('click',e=>{
+  const b=e.target.closest('.tab'); if(!b)return;
+  setTab(b.dataset.mode); state.active=state.mode==='solid'?'color':'a';
+  refresh(); pushLive();
+});
+
+let phase=0;
+(function loop(){
+  if(state.mode==='gradient'){
+    const t=(Math.sin(phase)+1)/2, [ar,ag,ab]=curRgb('a'), [br,bg,bb]=curRgb('b');
+    $('#preview').style.background=`rgb(${Math.round(ar+(br-ar)*t)},${Math.round(ag+(bg-ag)*t)},${Math.round(ab+(bb-ab)*t)})`;
+    phase+=state.speed;
+  }
+  requestAnimationFrame(loop);
+})();
+
+$('#onBtn').onclick=()=>api('/api/power',{on:true});
+$('#offBtn').onclick=()=>api('/api/power',{on:false});
+$('#stopBtn').onclick=()=>api('/api/stop',{});
+$('#saveBtn').onclick=async()=>{
+  const name=$('#stateSel').value;
+  const body=state.mode==='gradient'
+    ?{state:name,type:'gradient',a:curHex('a').slice(1),b:curHex('b').slice(1),speed:state.speed}
+    :{state:name,type:'solid',color:curHex('color').slice(1)};
+  try{ const r=await(await fetch('/api/save',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)})).json();
+       $('#saveMsg').textContent='saved → '+r.saved; renderStates(); }
+  catch{ $('#saveMsg').textContent='save failed'; }
+};
+
+// ---- current settings per state ----
+// Built-in effects (matching govee-light.ps1 / govee-animate.ps1); used as the
+// fallback when a state has no saved override in govee-states.json.
+const STATE_ORDER = ['thinking','permission','waiting','done','start','warning'];
+const STATE_LABEL = {
+  thinking:'thinking — working', permission:'permission — needs approval',
+  waiting:'waiting — idle', done:'done — finished',
+  start:'start — new session', warning:'warning — manual only'
+};
+const DEFAULTS = {
+  thinking:{type:'gradient',a:'8000FF',b:'FF00AA'},
+  permission:{type:'gradient',a:'FFA29A',b:'FFCDA9',speed:0.12},
+  waiting:{type:'solid',color:'005AFF'},
+  done:{type:'solid',color:'00FF00'},
+  start:{type:'rainbow'},
+  warning:{type:'gradient',a:'FF7A6E',b:'FFA877',speed:0.14}
+};
+async function renderStates(){
+  let saved={};
+  try{ const r=await(await fetch('/api/states')).json(); saved=r.states||{}; }catch{}
+  const el=$('#stateList'); el.innerHTML='';
+  STATE_ORDER.forEach(name=>{
+    const ov=saved[name], cur=ov||DEFAULTS[name], tag=ov?'saved':'default';
+    let bg, hex;
+    if(cur.type==='gradient'){
+      bg=`linear-gradient(90deg,#${cur.a},#${cur.b})`;
+      hex=`#${cur.a.toUpperCase()} → #${cur.b.toUpperCase()}`+(cur.speed!=null?` · ${cur.speed}`:'');
+    } else if(cur.type==='solid'){
+      bg='#'+cur.color; hex='#'+cur.color.toUpperCase();
+    } else {
+      bg='linear-gradient(90deg,#ff0040,#ff8000,#ffe000,#00c853,#2962ff,#aa00ff)'; hex='full spectrum';
+    }
+    const row=document.createElement('div'); row.className='staterow';
+    row.innerHTML=`<span class="stateswatch" style="background:${bg}"></span>`+
+      `<div class="statemeta"><span class="statename">${STATE_LABEL[name]}</span><span class="statehex">${hex}</span></div>`+
+      `<span class="statetag tag-${tag}">${tag}</span>`;
+    if(cur.type!=='rainbow'){
+      const btn=document.createElement('button'); btn.className='stateedit'; btn.textContent='Edit';
+      btn.onclick=()=>{ loadIntoEditor(cur); $('#stateSel').value=name; };
+      row.appendChild(btn);
+    }
+    el.appendChild(row);
+  });
+}
+function setSwatchFromHex(key,hex){ const[r,g,b]=hexToRgb(hex),[h,s,v]=rgbToHsv(r,g,b); state.sw[key]={h,s,v}; }
+function loadIntoEditor(cur){
+  if(cur.type==='gradient'){
+    setTab('gradient'); setSwatchFromHex('a',cur.a); setSwatchFromHex('b',cur.b);
+    if(cur.speed!=null){ state.speed=+cur.speed; $('#speed').value=Math.round(state.speed*100); $('#speedval').textContent=state.speed; }
+    state.active='a';
+  } else if(cur.type==='solid'){
+    setTab('solid'); setSwatchFromHex('color',cur.color); state.active='color';
+  }
+  refresh();
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+
+(async function init(){
+  refresh();
+  try{ const r=await(await fetch('/api/states')).json(); setStatus(true, r.ip?('lamp '+r.ip):'no lamp IP'); }
+  catch{ setStatus(false,'server offline'); }
+  renderStates();
+})();
+</script>
+</body>
+</html>

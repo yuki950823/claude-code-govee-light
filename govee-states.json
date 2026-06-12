@@ -1,0 +1,22 @@
+﻿{
+    "permission":  {
+                       "type":  "solid",
+                       "color":  "FF4B1E"
+                   },
+    "waiting":  {
+                    "type":  "solid",
+                    "color":  "000000"
+                },
+    "done":  {
+                 "type":  "solid",
+                 "color":  "7AFF14"
+             },
+    "warning":  {
+                    "type":  "solid",
+                    "color":  "FF492A"
+                },
+    "thinking":  {
+                     "type":  "solid",
+                     "color":  "63D0FF"
+                 }
+}
