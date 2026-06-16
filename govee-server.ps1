@@ -10,10 +10,11 @@
     GET  /                serve the control panel
     GET  /api/states      { ip, states }  (current govee-states.json)
     POST /api/color       { r,g,b }              -> solid colour now
-    POST /api/gradient    { a,b,speed }           -> live gradient animator
+    POST /api/gradient    { a,b,speed }           -> live 2-stop colour animator
+    POST /api/stream      { colors:[..],speed,flow } -> live spatial gradient (ptReal)
     POST /api/power       { on:true|false }
     POST /api/stop        {}                       -> stop any animation
-    POST /api/save        { state,type,a,b,speed | state,type,color } -> govee-states.json
+    POST /api/save        { state,type,a,b,speed | state,type,color | state,type:stream,colors,speed,flow } -> govee-states.json
 #>
 param([int]$Port = 8099)
 $ErrorActionPreference = 'Stop'
@@ -23,6 +24,7 @@ $statesPath = Join-Path $root 'govee-states.json'
 $genPath    = Join-Path $root 'generation'
 $htmlPath   = Join-Path $root 'govee-control.html'
 $gradient   = Join-Path $root 'govee-gradient.ps1'
+$streamer   = Join-Path $root 'govee-stream.ps1'
 
 function Get-IP {
   if (Test-Path $configPath) { try { return (Get-Content $configPath -Raw | ConvertFrom-Json).deviceIP } catch {} }
@@ -52,6 +54,16 @@ function Start-Gradient($a, $b, $speed) {
   $gen = New-Generation
   $spd = ([double]$speed).ToString([System.Globalization.CultureInfo]::InvariantCulture)
   $argString = "-NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File `"$gradient`" -IP $script:ip -A $a -B $b -Speed $spd -Gen $gen"
+  Start-Process -FilePath 'powershell' -WindowStyle Hidden -ArgumentList $argString | Out-Null
+}
+function Start-Stream($colors, $speed, $flow) {
+  # Spatial gradient live preview: drive govee-stream.ps1 (ptReal/razer). Same
+  # generation-token handoff as Start-Gradient — bump, then launch tagged.
+  $gen = New-Generation
+  $spd = ([double]$speed).ToString([System.Globalization.CultureInfo]::InvariantCulture)
+  $col = ($colors -join ',')
+  $fl  = if ($flow) { 1 } else { 0 }
+  $argString = "-NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File `"$streamer`" -IP $script:ip -Colors $col -Speed $spd -Flow $fl -Gen $gen"
   Start-Process -FilePath 'powershell' -WindowStyle Hidden -ArgumentList $argString | Out-Null
 }
 function Write-Json($res, $obj) {
@@ -99,6 +111,10 @@ while ($listener.IsListening) {
           Start-Gradient $d.a $d.b $d.speed
           Write-Json $res @{ ok = $true }
         }
+        '/api/stream' {
+          Start-Stream $d.colors $d.speed $d.flow
+          Write-Json $res @{ ok = $true }
+        }
         '/api/power' {
           New-Generation | Out-Null
           if ($d.on) { Send-Govee @('{"msg":{"cmd":"turn","data":{"value":1}}}') }
@@ -117,8 +133,9 @@ while ($listener.IsListening) {
               if ($existing) { foreach ($p in $existing.PSObject.Properties) { $ht[$p.Name] = $p.Value } }
             } catch {}
           }
-          if ($d.type -eq 'gradient') { $ht[$d.state] = @{ type = 'gradient'; a = $d.a; b = $d.b; speed = $d.speed } }
-          else                        { $ht[$d.state] = @{ type = 'solid'; color = $d.color } }
+          if     ($d.type -eq 'gradient') { $ht[$d.state] = @{ type = 'gradient'; a = $d.a; b = $d.b; speed = $d.speed } }
+          elseif ($d.type -eq 'stream')   { $ht[$d.state] = @{ type = 'stream'; colors = @($d.colors); speed = $d.speed; flow = [bool]$d.flow } }
+          else                            { $ht[$d.state] = @{ type = 'solid'; color = $d.color } }
           ($ht | ConvertTo-Json -Depth 6) | Set-Content -Path $statesPath -Encoding UTF8
           Write-Json $res @{ ok = $true; saved = $d.state }
         }

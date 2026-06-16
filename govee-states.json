@@ -1,12 +1,22 @@
 ﻿{
-    "permission":  {
-                       "type":  "solid",
-                       "color":  "FF4B1E"
-                   },
     "waiting":  {
                     "type":  "solid",
                     "color":  "000000"
                 },
+    "permission":  {
+                       "flow":  true,
+                       "speed":  0.01,
+                       "type":  "stream",
+                       "colors":  [
+                                      "FF2900",
+                                      "FF346F",
+                                      "FFFB94"
+                                  ]
+                   },
+    "thinking":  {
+                     "type":  "solid",
+                     "color":  "63D0FF"
+                 },
     "done":  {
                  "type":  "solid",
                  "color":  "7AFF14"
@@ -14,9 +24,5 @@
     "warning":  {
                     "type":  "solid",
                     "color":  "FF492A"
-                },
-    "thinking":  {
-                     "type":  "solid",
-                     "color":  "63D0FF"
-                 }
+                }
 }

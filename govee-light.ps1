@@ -32,6 +32,7 @@ $configPath = Join-Path $root 'govee-config.json'
 $statesPath = Join-Path $root 'govee-states.json'
 $genPath    = Join-Path $root 'generation'
 $animator   = Join-Path $root 'govee-animate.ps1'
+$streamer   = Join-Path $root 'govee-stream.ps1'
 
 # ---- helpers -------------------------------------------------------------
 function Get-LocalIP {
@@ -129,6 +130,12 @@ function Send-BaseColor($evt, $ip) {
       $rgb = @([int](($a[0] + $b[0]) / 2), [int](($a[1] + $b[1]) / 2), [int](($a[2] + $b[2]) / 2))
     }
     elseif ($ov.type -eq 'solid') { $rgb = HexToRGB $ov.color }
+    elseif ($ov.type -eq 'stream' -and $ov.colors) {
+      # Seed the gradient's first stop as an instant single-colour frame; the
+      # streamer enables razer mode and takes over the spatial gradient a beat
+      # later (same latency trick as the other effects).
+      $rgb = HexToRGB ($ov.colors[0])
+    }
   }
   if (-not $rgb) {
     $rgb = switch ($evt) {
@@ -146,7 +153,18 @@ function Send-BaseColor($evt, $ip) {
 function Start-Animator($evt, $ip, $gen) {
   # Single quoted arg string: PS 5.1 Start-Process does NOT quote array elements,
   # so the script path (which contains a space) must be quoted explicitly.
-  $argString = "-NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File `"$animator`" -Event $evt -IP $ip -Gen $gen"
+  $ov = Get-Override $evt
+  if ($ov -and $ov.type -eq 'stream' -and $ov.colors) {
+    # Spatial gradient: drive govee-stream.ps1 (ptReal/razer) instead of the
+    # single-colour govee-animate.ps1. Colours join into a comma list (hex, no
+    # spaces -> safe as one bare arg).
+    $colors = ($ov.colors -join ',')
+    $spd  = if ($ov.speed) { ([double]$ov.speed).ToString([System.Globalization.CultureInfo]::InvariantCulture) } else { '0.05' }
+    $flow = if ($ov.flow -eq $false -or $ov.flow -eq 0) { 0 } else { 1 }
+    $argString = "-NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File `"$streamer`" -IP $ip -Colors $colors -Speed $spd -Flow $flow -Gen $gen"
+  } else {
+    $argString = "-NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File `"$animator`" -Event $evt -IP $ip -Gen $gen"
+  }
   Start-Process -FilePath 'powershell' -WindowStyle Hidden -ArgumentList $argString | Out-Null
 }
 

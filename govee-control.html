@@ -75,6 +75,7 @@ small.hint{display:block;color:var(--mute);font-size:12px;margin-top:10px}
     <div class="tabs" id="tabs">
       <button class="tab active" data-mode="solid">Solid</button>
       <button class="tab" data-mode="gradient">Gradient</button>
+      <button class="tab" data-mode="spatial">Spatial</button>
     </div>
 
     <div class="swatches" id="swatches"></div>
@@ -99,6 +100,25 @@ small.hint{display:block;color:var(--mute);font-size:12px;margin-top:10px}
       </div>
       <div class="preview" id="preview"></div>
       <small class="hint">Preview mirrors the lamp's easing between the two stops.</small>
+    </div>
+
+    <div id="spatialPanel" style="display:none">
+      <hr/>
+      <div class="row" style="gap:16px;align-items:flex-end">
+        <div class="field" style="max-width:300px;flex:1">
+          <label class="cap" for="sspeed">Flow speed · <span id="sspeedval">0.05</span></label>
+          <input id="sspeed" type="range" min="0" max="20" value="5"/>
+        </div>
+        <label class="cap" style="display:flex;align-items:center;gap:8px;cursor:pointer;text-transform:none;height:40px">
+          <input id="flow" type="checkbox" checked style="accent-color:var(--ink);width:16px;height:16px"/> Flow (scroll)
+        </label>
+        <div class="btnrow">
+          <button class="pill secondary" id="addStop" title="Add a colour stop">+ Stop</button>
+          <button class="pill secondary" id="delStop" title="Remove the active stop">– Stop</button>
+        </div>
+      </div>
+      <div class="preview" id="spreview"></div>
+      <small class="hint">Many colours at once across the bars (ptReal). Click a stop above to edit it on the wheel; 2–6 stops loop seamlessly.</small>
     </div>
   </div>
 
@@ -156,8 +176,14 @@ const toHex=(r,g,b)=>'#'+[r,g,b].map(x=>Math.max(0,Math.min(255,x)).toString(16)
 function hexToRgb(h){ h=h.replace('#','').trim(); if(h.length===3)h=h.split('').map(c=>c+c).join(''); return [parseInt(h.slice(0,2),16),parseInt(h.slice(2,4),16),parseInt(h.slice(4,6),16)]; }
 
 const A=rgbToHsv(255,162,154), B=rgbToHsv(255,205,169);
-const state={ mode:'solid', active:'color',
-  sw:{ color:{h:0,s:0,v:1}, a:{h:A[0],s:A[1],v:A[2]}, b:{h:B[0],s:B[1],v:B[2]} }, speed:0.12 };
+const SD=['8000FF','FF00AA','00E0FF'].map(h=>{const[r,g,b]=hexToRgb(h),[hh,s,v]=rgbToHsv(r,g,b);return{h:hh,s,v};});
+const state={ mode:'solid', active:'color', activeStop:0,
+  sw:{ color:{h:0,s:0,v:1}, a:{h:A[0],s:A[1],v:A[2]}, b:{h:B[0],s:B[1],v:B[2]} },
+  stops:SD, speed:0.12, sspeed:0.05, flow:true };
+// The wheel/val/hex always edit ONE colour: the active solid/gradient swatch, or
+// the active spatial stop. This unifies all three modes onto the same picker.
+function editTarget(){ return state.mode==='spatial' ? state.stops[state.activeStop] : state.sw[state.active]; }
+const stopHexes=()=>state.stops.map(c=>{const[r,g,b]=hsvToRgb(c.h,c.s,c.v);return toHex(r,g,b).slice(1);});
 
 function drawWheel(v){
   const img=wctx.createImageData(240,240), d=img.data;
@@ -167,7 +193,7 @@ function drawWheel(v){
       const[r,g,b]=hsvToRgb(h,dist/CR,v); d[i]=r;d[i+1]=g;d[i+2]=b;d[i+3]=255; } else d[i+3]=0;
   }
   wctx.putImageData(img,0,0);
-  const c=state.sw[state.active], ang=c.h*Math.PI/180, rr=c.s*CR;
+  const c=editTarget(), ang=c.h*Math.PI/180, rr=c.s*CR;
   const kx=R+Math.cos(ang)*rr, ky=R+Math.sin(ang)*rr;
   wctx.beginPath();wctx.arc(kx,ky,7,0,Math.PI*2);wctx.strokeStyle='#fff';wctx.lineWidth=2;wctx.stroke();
   wctx.beginPath();wctx.arc(kx,ky,8.5,0,Math.PI*2);wctx.strokeStyle='#00000055';wctx.lineWidth=1;wctx.stroke();
@@ -177,6 +203,16 @@ const curHex=k=>{const[r,g,b]=curRgb(k);return toHex(r,g,b);};
 
 function renderSwatches(){
   const el=$('#swatches'); el.innerHTML='';
+  if(state.mode==='spatial'){
+    state.stops.forEach((c,i)=>{
+      const[r,g,b]=hsvToRgb(c.h,c.s,c.v), hex=toHex(r,g,b), div=document.createElement('div');
+      div.className='sw'+(state.activeStop===i?' active':'');
+      div.innerHTML=`<span class="dot" style="background:${hex}"></span><span class="lab">${i+1} · ${hex}</span>`;
+      div.onclick=()=>{state.activeStop=i;refresh();};
+      el.appendChild(div);
+    });
+    return;
+  }
   const keys=state.mode==='solid'?[['color','Colour']]:[['a','Stop A'],['b','Stop B']];
   keys.forEach(([k,label])=>{
     const hex=curHex(k), div=document.createElement('div');
@@ -187,9 +223,9 @@ function renderSwatches(){
   });
 }
 function refresh(){
-  const c=state.sw[state.active]; drawWheel(c.v);
+  const c=editTarget(); drawWheel(c.v);
   $('#val').value=Math.round(c.v*100);
-  const[r,g,b]=curRgb(); $('#hex').value=toHex(r,g,b); $('#rgb').textContent=`rgb(${r}, ${g}, ${b})`;
+  const[r,g,b]=hsvToRgb(c.h,c.s,c.v); $('#hex').value=toHex(r,g,b); $('#rgb').textContent=`rgb(${r}, ${g}, ${b})`;
   renderSwatches();
 }
 
@@ -198,7 +234,8 @@ function pushLive(){
   clearTimeout(pushTimer);
   pushTimer=setTimeout(()=>{
     if(state.mode==='solid'){ const[r,g,b]=curRgb('color'); api('/api/color',{r,g,b}); }
-    else api('/api/gradient',{a:curHex('a').slice(1),b:curHex('b').slice(1),speed:state.speed});
+    else if(state.mode==='gradient') api('/api/gradient',{a:curHex('a').slice(1),b:curHex('b').slice(1),speed:state.speed});
+    else api('/api/stream',{colors:stopHexes(),speed:state.sspeed,flow:state.flow});
   },60);
 }
 async function api(path,body){
@@ -211,39 +248,53 @@ function pick(e){
   const rect=wheel.getBoundingClientRect();
   const x=(e.clientX-rect.left)*(240/rect.width), y=(e.clientY-rect.top)*(240/rect.height);
   const dx=x-R,dy=y-R; let h=Math.atan2(dy,dx)*180/Math.PI; if(h<0)h+=360;
-  const c=state.sw[state.active]; c.h=h; c.s=Math.min(1,Math.sqrt(dx*dx+dy*dy)/CR);
+  const c=editTarget(); c.h=h; c.s=Math.min(1,Math.sqrt(dx*dx+dy*dy)/CR);
   refresh(); pushLive();
 }
 let dragging=false;
 wheel.addEventListener('pointerdown',e=>{dragging=true;wheel.setPointerCapture(e.pointerId);pick(e);});
 wheel.addEventListener('pointermove',e=>{if(dragging)pick(e);});
 wheel.addEventListener('pointerup',()=>dragging=false);
-$('#val').addEventListener('input',e=>{state.sw[state.active].v=e.target.value/100;refresh();pushLive();});
+$('#val').addEventListener('input',e=>{editTarget().v=e.target.value/100;refresh();pushLive();});
 $('#hex').addEventListener('change',e=>{
   const v=e.target.value.replace('#','');
   if(!/^[0-9a-fA-F]{6}$/.test(v))return;
   const[r,g,b]=hexToRgb(v),[h,s,vv]=rgbToHsv(r,g,b);
-  const c=state.sw[state.active]; c.h=h;c.s=s;c.v=vv; refresh(); pushLive();
+  const c=editTarget(); c.h=h;c.s=s;c.v=vv; refresh(); pushLive();
 });
 $('#speed').addEventListener('input',e=>{state.speed=+(e.target.value/100).toFixed(2);$('#speedval').textContent=state.speed;pushLive();});
+$('#sspeed').addEventListener('input',e=>{state.sspeed=+(e.target.value/100).toFixed(2);$('#sspeedval').textContent=state.sspeed;pushLive();});
+$('#flow').addEventListener('change',e=>{state.flow=e.target.checked;pushLive();});
+$('#addStop').onclick=()=>{ if(state.stops.length>=6)return; const c=editTarget(); state.stops.splice(state.activeStop+1,0,{h:c.h,s:c.s,v:c.v}); state.activeStop++; refresh(); pushLive(); };
+$('#delStop').onclick=()=>{ if(state.stops.length<=2)return; state.stops.splice(state.activeStop,1); if(state.activeStop>=state.stops.length)state.activeStop=state.stops.length-1; refresh(); pushLive(); };
 
 function setTab(mode){
   document.querySelectorAll('.tab').forEach(x=>x.classList.toggle('active', x.dataset.mode===mode));
   state.mode=mode;
   $('#gradientPanel').style.display = mode==='gradient'?'block':'none';
+  $('#spatialPanel').style.display = mode==='spatial'?'block':'none';
 }
 $('#tabs').addEventListener('click',e=>{
   const b=e.target.closest('.tab'); if(!b)return;
-  setTab(b.dataset.mode); state.active=state.mode==='solid'?'color':'a';
+  setTab(b.dataset.mode);
+  state.active=state.mode==='solid'?'color':'a';
+  if(state.activeStop>=state.stops.length)state.activeStop=0;
   refresh(); pushLive();
 });
 
-let phase=0;
+let phase=0, sphase=0;
 (function loop(){
   if(state.mode==='gradient'){
     const t=(Math.sin(phase)+1)/2, [ar,ag,ab]=curRgb('a'), [br,bg,bb]=curRgb('b');
     $('#preview').style.background=`rgb(${Math.round(ar+(br-ar)*t)},${Math.round(ag+(bg-ag)*t)},${Math.round(ab+(bb-ab)*t)})`;
     phase+=state.speed;
+  } else if(state.mode==='spatial'){
+    const cols=stopHexes().map(h=>'#'+h);
+    const el=$('#spreview');
+    el.style.background=`linear-gradient(90deg, ${cols.join(', ')}, ${cols[0]})`;
+    el.style.backgroundSize='200% 100%';
+    if(state.flow) sphase=(sphase+state.sspeed*4)%100;
+    el.style.backgroundPositionX=sphase+'%';
   }
   requestAnimationFrame(loop);
 })();
@@ -253,9 +304,10 @@ $('#offBtn').onclick=()=>api('/api/power',{on:false});
 $('#stopBtn').onclick=()=>api('/api/stop',{});
 $('#saveBtn').onclick=async()=>{
   const name=$('#stateSel').value;
-  const body=state.mode==='gradient'
-    ?{state:name,type:'gradient',a:curHex('a').slice(1),b:curHex('b').slice(1),speed:state.speed}
-    :{state:name,type:'solid',color:curHex('color').slice(1)};
+  let body;
+  if(state.mode==='gradient') body={state:name,type:'gradient',a:curHex('a').slice(1),b:curHex('b').slice(1),speed:state.speed};
+  else if(state.mode==='spatial') body={state:name,type:'stream',colors:stopHexes(),speed:state.sspeed,flow:state.flow};
+  else body={state:name,type:'solid',color:curHex('color').slice(1)};
   try{ const r=await(await fetch('/api/save',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)})).json();
        $('#saveMsg').textContent='saved → '+r.saved; renderStates(); }
   catch{ $('#saveMsg').textContent='save failed'; }
@@ -290,6 +342,10 @@ async function renderStates(){
       hex=`#${cur.a.toUpperCase()} → #${cur.b.toUpperCase()}`+(cur.speed!=null?` · ${cur.speed}`:'');
     } else if(cur.type==='solid'){
       bg='#'+cur.color; hex='#'+cur.color.toUpperCase();
+    } else if(cur.type==='stream'){
+      const cs=(cur.colors||[]).map(c=>'#'+c);
+      bg=`linear-gradient(90deg, ${cs.join(', ')}, ${cs[0]})`;
+      hex=(cur.colors||[]).map(c=>'#'+c.toUpperCase()).join(' ')+(cur.flow===false?' · static':' · flow')+(cur.speed!=null?` ${cur.speed}`:'');
     } else {
       bg='linear-gradient(90deg,#ff0040,#ff8000,#ffe000,#00c853,#2962ff,#aa00ff)'; hex='full spectrum';
     }
@@ -313,6 +369,12 @@ function loadIntoEditor(cur){
     state.active='a';
   } else if(cur.type==='solid'){
     setTab('solid'); setSwatchFromHex('color',cur.color); state.active='color';
+  } else if(cur.type==='stream'){
+    setTab('spatial');
+    state.stops=(cur.colors||['8000FF','FF00AA']).map(h=>{const[r,g,b]=hexToRgb(h),[hh,s,v]=rgbToHsv(r,g,b);return{h:hh,s,v};});
+    state.activeStop=0;
+    if(cur.speed!=null){ state.sspeed=+cur.speed; $('#sspeed').value=Math.round(state.sspeed*100); $('#sspeedval').textContent=state.sspeed; }
+    state.flow=cur.flow!==false; $('#flow').checked=state.flow;
   }
   refresh();
   window.scrollTo({top:0,behavior:'smooth'});
